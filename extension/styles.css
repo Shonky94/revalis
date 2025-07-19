@@ -100,13 +100,15 @@ body {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
+/* Section label: add left padding to avoid overlap with border */
 .section-label {
   background: #343541;
   color: #10a37f;
   font-weight: 700;
   border-bottom: 1px solid #202123;
-  padding: 10px 18px;
+  padding: 10px 18px 6px 24px; /* more left padding */
   font-size: 13px;
+  margin-bottom: 2px;
 }
 
 .text-content,
@@ -116,6 +118,8 @@ body {
   color: #fff;
   background: none;
   border: none;
+  margin-top: 0;
+  padding-top: 4px;
 }
 
 /* Highlighted text styling */
@@ -680,10 +684,37 @@ body {
   justify-content: space-between;
   align-items: center;
 }
-.logo {
-  gap: 10px;
+.header-row {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 16px;
+}
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.main-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.sub-header {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  border-top: 1px solid #343541;
+  padding-top: 6px;
+}
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 .logo-icon {
   width: 36px;
@@ -1493,4 +1524,69 @@ body.sidebar-overlay-active #contextsnap-sidebar-show-btn {
   }
   
   .key-status-info {
-    background: rgba(160,160,160,0.1
+    background: rgba(160,160,160,0.1);}
+  }
+
+/* Collapsible API settings section */
+.collapsible-api-settings {
+  display: none;
+  transition: max-height 0.3s ease;
+}
+.collapsible-api-settings.active {
+  display: block;
+}
+
+/* Ensure sidebar layout stretches content to bottom */
+#container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+.content.chat-history {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.api-settings-toggle {
+  background: none;
+  border: none;
+  color: #10a37f;
+  font-size: 22px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+  margin-left: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.api-settings-toggle:hover, .api-settings-toggle:focus {
+  background: #10a37f22;
+  color: #1a7f64;
+  box-shadow: 0 2px 8px rgba(16,163,127,0.12);
+  outline: none;
+}
+
+/* Add spacing between section label and text box */
+.section-label {
+  margin-bottom: 6px;
+}
+.text-content, .response-content {
+  margin-top: 4px;
+}
+
+@media (max-width: 500px) {
+  .header-row {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .header-actions {
+    gap: 6px;
+  }
+  .logo h1 {
+    font-size: 16px;
+  }
+}

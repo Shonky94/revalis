@@ -131,6 +131,18 @@ window.addEventListener('DOMContentLoaded', function() {
     // Optionally, add a class to body for popout-specific styling
     document.body.classList.add('popout-mode');
   }
+
+  // Collapsible API settings logic
+  const apiToggleBtn = document.getElementById('api-settings-toggle');
+  const apiSettingsSection = document.getElementById('api-settings-section');
+  if (apiSettingsSection) {
+    apiSettingsSection.classList.remove('active'); // Hide by default
+  }
+  if (apiToggleBtn && apiSettingsSection) {
+    apiToggleBtn.addEventListener('click', function() {
+      apiSettingsSection.classList.toggle('active');
+    });
+  }
 });
 
 // Initialize authentication system
