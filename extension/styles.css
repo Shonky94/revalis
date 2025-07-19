@@ -102,13 +102,18 @@ body {
 
 /* Section label: add left padding to avoid overlap with border */
 .section-label {
+  position: relative;
+  z-index: 2;
   background: #343541;
   color: #10a37f;
   font-weight: 700;
   border-bottom: 1px solid #202123;
-  padding: 10px 18px 6px 24px; /* more left padding */
-  font-size: 13px;
-  margin-bottom: 2px;
+  padding: 10px 18px 2px 18px; /* less bottom padding, equal left/right */
+  margin: 0 auto 0 auto; /* center horizontally */
+  border-top-left-radius: 12px;
+  border-top-right-radius: 12px;
+  display: block;
+  text-align: center;
 }
 
 .text-content,
@@ -119,7 +124,7 @@ body {
   background: none;
   border: none;
   margin-top: 0;
-  padding-top: 4px;
+  padding-top: 2px;
 }
 
 /* Highlighted text styling */
@@ -1572,10 +1577,11 @@ body.sidebar-overlay-active #contextsnap-sidebar-show-btn {
 
 /* Add spacing between section label and text box */
 .section-label {
-  margin-bottom: 6px;
+  margin-left: 4px;
+  
 }
 .text-content, .response-content {
-  margin-top: 4px;
+  margin-top: 2px;
 }
 
 @media (max-width: 500px) {

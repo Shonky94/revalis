@@ -470,25 +470,15 @@ function updateChatDisplay() {
     
     messageDiv.innerHTML = `
       <div class="highlighted-section">
-        <div class="section-label">Selected Text</div>
+        <div class="section-label">Explanation</div>
         <div class="text-content">
           <p>${escapeHtml(message.selectedText)}</p>
-          <button class="copy-btn" onclick="copyText('${escapeHtml(message.selectedText)}')" title="Copy text">
-            <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
-              <path d="M8 3H5a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-3M8 3h8a2 2 0 012 2v3M8 3v10a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2h-8a2 2 0 00-2-2z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </button>
         </div>
       </div>
       <div class="response-section">
         <div class="section-label">AI Explanation</div>
         <div class="response-content">
           <p>${escapeHtml(message.aiResponse)}</p>
-          <button class="copy-btn" onclick="copyText('${escapeHtml(message.aiResponse)}')" title="Copy response">
-            <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
-              <path d="M8 3H5a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-3M8 3h8a2 2 0 012 2v3M8 3v10a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2h-8a2 2 0 00-2-2z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </button>
         </div>
       </div>
     `;
