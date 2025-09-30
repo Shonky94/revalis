@@ -47,11 +47,39 @@ window.addEventListener('DOMContentLoaded', function() {
   const sidebar = document.getElementById('sidebar');
   const resizeHandle = document.querySelector('.resize-handle');
   const header = document.querySelector('.header');
-
+  const dragPopoutBtn = document.getElementById('drag-popout-btn');
+  console.log('isPopout:', isPopout, 'dragPopoutBtn:', !!dragPopoutBtn);
   if (popoutBtn && sidebar) {
     popoutBtn.addEventListener('click', function() {
       // Send a message to the parent page to toggle overlay mode for the iframe
       window.parent.postMessage({ type: 'toggle-overlay' }, '*');
+    });
+  }
+
+  if (isPopout && dragPopoutBtn) {
+    dragPopoutBtn.style.display = 'flex';
+    let isDraggingPopout = false;
+    let dragStartX = 0;
+    let windowStartX = 0;
+    dragPopoutBtn.addEventListener('mousedown', function(e) {
+      isDraggingPopout = true;
+      dragStartX = e.screenX;
+      windowStartX = window.screenX;
+      dragPopoutBtn.style.cursor = 'grabbing';
+      document.body.style.userSelect = 'none';
+    });
+    window.addEventListener('mousemove', function(e) {
+      if (isDraggingPopout) {
+        const deltaX = e.screenX - dragStartX;
+        window.moveTo(windowStartX + deltaX, window.screenY);
+      }
+    });
+    window.addEventListener('mouseup', function() {
+      if (isDraggingPopout) {
+        isDraggingPopout = false;
+        dragPopoutBtn.style.cursor = 'grab';
+        document.body.style.userSelect = '';
+      }
     });
   }
 
@@ -244,25 +272,90 @@ window.addEventListener('message', function(event) {
       return;
     }
     
-    // Check if authenticated before making request
-    if (!isAuthenticated) {
-      addMessageToHistory(selectedText, 'Error: Please configure your API key first. Go to the API Configuration section above.');
-      return;
-    }
-    
     // Show loading animation/message
     showLoadingMessage(selectedText);
 
-    // Use secure request with user's API key
+    // Use local definition API (no authentication required)
     makeSecureRequest(selectedText);
   }
 });
 
-// Secure request function
+// Local definition request function
 async function makeSecureRequest(text) {
+  // Extract individual words for definition lookup
+  const words = text.trim().split(/\s+/).filter(word => word.length > 0);
+  const searchWord = words[0]; // Start with first word
+  
+  console.log('ContextSnap: Searching for definition of:', searchWord);
+  
+  try {
+    // Try local definition API first
+    const response = await fetch('http://localhost:5000/api/definition', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ word: searchWord })
+    });
+    
+    console.log('ContextSnap: API response status:', response.status);
+    
+    if (response.ok) {
+      const data = await response.json();
+      console.log('ContextSnap: API response data:', data);
+      
+      // Remove loading message before adding real response
+      const chatContainer = document.getElementById('chat-container');
+      if (chatContainer) {
+        const loadingMsg = chatContainer.querySelector('.chat-message.loading');
+        if (loadingMsg) loadingMsg.remove();
+      }
+      
+      if (data.error) {
+        // No definition found, show a helpful message
+        addMessageToHistory(text, `📚 **No Definition Found**\n\nSorry, I couldn't find a definition for "${searchWord}" in the local database.\n\n💡 **Tip:** Try selecting a single word or a more specific term.\n\n🔍 **Available:** The database contains ${data.cache_stats ? data.cache_stats.total_definitions : '580+'} academic and technical definitions.`);
+      } else {
+        // Format the local definition response
+        let definitionText = '';
+        
+        if (data.match_type === 'fuzzy') {
+          definitionText = `📚 **${data.original_word}** (${Math.round(data.similarity * 100)}% match for "${searchWord}")\n\n${data.definition}`;
+          
+          if (data.alternative_matches && data.alternative_matches.length > 0) {
+            const alternatives = data.alternative_matches.map(alt => `${alt.word} (${Math.round(alt.similarity * 100)}%)`).join(', ');
+            definitionText += `\n\n**Similar terms:** ${alternatives}`;
+          }
+        } else {
+          definitionText = `📚 **${data.original_word || searchWord}**\n\n${data.definition}`;
+        }
+        
+        if (data.response_time_ms) {
+          definitionText += `\n\n⚡ *Response time: ${data.response_time_ms}ms*`;
+        }
+        
+        addMessageToHistory(text, definitionText);
+      }
+    } else {
+      throw new Error(`API returned ${response.status}: ${response.statusText}`);
+    }
+  } catch (err) {
+    console.log('ContextSnap: Local API error:', err);
+    
+    // Remove loading message
+    const chatContainer = document.getElementById('chat-container');
+    if (chatContainer) {
+      const loadingMsg = chatContainer.querySelector('.chat-message.loading');
+      if (loadingMsg) loadingMsg.remove();
+    }
+    
+    // Show local API error instead of falling back to external APIs
+    addMessageToHistory(text, `❌ **Local API Unavailable**\n\nThe ContextSnap definition server is not running or responding.\n\n🔧 **To fix this:**\n1. Open PowerShell in the contextsnap/scripts folder\n2. Run: \`python start_system.py\`\n3. Keep the terminal window open\n\n**Error:** ${err.message}`);
+  }
+}
+
+// Fallback to external API
+async function makeExternalRequest(text) {
   const apiKey = keyManager.getApiKey(currentProvider);
   if (!apiKey) {
-    addMessageToHistory(text, 'Error: Please configure your API key first.');
+    addMessageToHistory(text, 'Error: Please configure your API key first, or start the local definition server.');
     return;
   }
 
@@ -289,7 +382,8 @@ async function makeSecureRequest(text) {
     if (data.error) {
       addMessageToHistory(text, `Error: ${data.error}`);
     } else {
-      addMessageToHistory(text, data.explanation || data.response || data.result || JSON.stringify(data));
+      const response_text = data.explanation || data.response || data.result || JSON.stringify(data);
+      addMessageToHistory(text, `🤖 **External AI Response**\n\n${response_text}`);
     }
   } catch (err) {
     const chatContainer = document.getElementById('chat-container');
@@ -297,7 +391,7 @@ async function makeSecureRequest(text) {
       const loadingMsg = chatContainer.querySelector('.chat-message.loading');
       if (loadingMsg) loadingMsg.remove();
     }
-    addMessageToHistory(text, 'Error: ' + err.message);
+    addMessageToHistory(text, 'Error: Both local and external APIs unavailable. ' + err.message);
   }
 }
 

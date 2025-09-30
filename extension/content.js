@@ -11,12 +11,13 @@ function injectSidebarStyles() {
       width: 400px !important;
       height: 100vh !important;
       border: none !important;
-      z-index: 999999 !important;
+      z-index: 2147483647 !important; /* Maximum z-index for PDFs */
       box-shadow: -2px 0 5px rgba(0,0,0,0.1) !important;
       background: white !important;
       transition: transform 0.3s cubic-bezier(0.4,0,0.2,1) !important;
       transform: translateX(100%) !important;
       display: block !important;
+      pointer-events: auto !important; /* Ensure interactions work in PDFs */
     }
     #contextsnap-sidebar.open {
       transform: translateX(0) !important;
@@ -31,7 +32,7 @@ function injectSidebarStyles() {
       font-size: 18px;
       width: 32px;
       height: 32px;
-      z-index: 1000000;
+      z-index: 2147483647;
       cursor: pointer;
       box-shadow: 0 2px 8px rgba(0,0,0,0.08);
       display: flex;
@@ -39,6 +40,7 @@ function injectSidebarStyles() {
       justify-content: center;
       transition: background 0.2s;
       color: #333 !important;
+      pointer-events: auto !important;
     }
     #contextsnap-sidebar-close-btn:hover {
       background: #f8f9fa;
@@ -56,49 +58,19 @@ function injectSidebarStyles() {
       height: 44px;
       font-size: 24px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.12);
-      z-index: 1000001;
+      z-index: 2147483647;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
       transition: background 0.2s, box-shadow 0.2s;
+      pointer-events: auto !important;
     }
     #contextsnap-sidebar-show-btn:hover {
       background: #1a7f64;
       box-shadow: 0 4px 16px rgba(16,163,127,0.18);
     }
-    #contextsnap-context-menu {
-      position: fixed;
-      background: #fff;
-      border: 1px solid #ddd;
-      border-radius: 8px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-      z-index: 1000001;
-      padding: 8px 0;
-      min-width: 200px;
-      display: none;
-    }
-    #contextsnap-context-menu button {
-      display: block;
-      width: 100%;
-      padding: 8px 16px;
-      border: none;
-      background: none;
-      text-align: left;
-      cursor: pointer;
-      font-size: 14px;
-      color: #333;
-      transition: background 0.2s;
-    }
-    #contextsnap-context-menu button:hover {
-      background: #f5f5f5;
-    }
-    #contextsnap-context-menu button:first-child {
-      border-radius: 8px 8px 0 0;
-    }
-    #contextsnap-context-menu button:last-child {
-      border-radius: 0 0 8px 8px;
-    }
+
   `;
   document.head.appendChild(style);
 }
@@ -106,8 +78,23 @@ function injectSidebarStyles() {
 let isHyperSearchMode = false; // Default to deactive mode
 
 function showSidebar() {
+  console.log('ContextSnap: showSidebar() called');
   const iframe = document.getElementById('contextsnap-sidebar');
-  if (iframe) {
+  console.log('ContextSnap: iframe found:', !!iframe);
+  
+  if (!iframe) {
+    console.log('ContextSnap: No iframe found, loading sidebar...');
+    loadSidebar();
+    // Try again after loading
+    setTimeout(() => {
+      const newIframe = document.getElementById('contextsnap-sidebar');
+      if (newIframe) {
+        console.log('ContextSnap: Iframe loaded, opening...');
+        newIframe.classList.add('open');
+        newIframe.classList.remove('collapsed');
+      }
+    }, 100);
+  } else {
     iframe.classList.add('open');
     iframe.classList.remove('collapsed');
     const closeBtn = document.getElementById('contextsnap-sidebar-close-btn');
@@ -149,51 +136,30 @@ function injectShowButton() {
   document.body.appendChild(btn);
 }
 
-function injectContextMenu() {
-  if (document.getElementById('contextsnap-context-menu')) return;
-  const menu = document.createElement('div');
-  menu.id = 'contextsnap-context-menu';
-  menu.innerHTML = `
-    <button id="contextsnap-analyze-btn">🔍 Analyze with ContextSnap</button>
-    <button id="contextsnap-cancel-btn">Cancel</button>
-  `;
-  document.body.appendChild(menu);
+// Handle messages from background script
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  console.log('ContextSnap: Message received:', request);
   
-  // Add event listeners
-  document.getElementById('contextsnap-analyze-btn').addEventListener('click', handleContextMenuAnalyze);
-  document.getElementById('contextsnap-cancel-btn').addEventListener('click', hideContextMenu);
-}
-
-function showContextMenu(x, y, selectedText) {
-  const menu = document.getElementById('contextsnap-context-menu');
-  if (!menu) return;
-  
-  menu.style.left = x + 'px';
-  menu.style.top = y + 'px';
-  menu.style.display = 'block';
-  menu.dataset.selectedText = selectedText;
-}
-
-function hideContextMenu() {
-  const menu = document.getElementById('contextsnap-context-menu');
-  if (menu) {
-    menu.style.display = 'none';
-  }
-}
-
-function handleContextMenuAnalyze() {
-  const menu = document.getElementById('contextsnap-context-menu');
-  const selectedText = menu.dataset.selectedText;
-  hideContextMenu();
-  
-  if (selectedText) {
+  if (request.action === "analyze-text" && request.text) {
+    console.log('ContextSnap: Received text from context menu:', request.text.substring(0, 50) + '...');
+    
+    // Show sidebar and analyze text
     showSidebar();
     const iframe = document.getElementById('contextsnap-sidebar');
     if (iframe) {
-      iframe.contentWindow.postMessage({ text: selectedText }, '*');
+      // Wait a moment for sidebar to load if needed
+      setTimeout(() => {
+        console.log('ContextSnap: Sending message to sidebar iframe');
+        iframe.contentWindow.postMessage({ text: request.text }, '*');
+      }, 500); // Increased timeout to ensure sidebar is loaded
     }
+    
+    sendResponse({ success: true });
+  } else {
+    console.log('ContextSnap: Message ignored - action:', request.action, 'hasText:', !!request.text);
+    sendResponse({ success: false });
   }
-}
+});
 
 function loadSidebar() {
   let iframe = document.getElementById('contextsnap-sidebar');
@@ -225,67 +191,174 @@ function loadSidebar() {
   }
 }
 
-// Initialize extension when page loads
-document.addEventListener('DOMContentLoaded', function() {
+// Initialize extension
+function initializeContextSnap() {
   injectSidebarStyles();
   injectCloseButton();
   injectShowButton();
-  injectContextMenu();
   loadSidebar();
-});
+  
+  // Log PDF detection for debugging
+  if (isPDFViewer()) {
+    console.log('ContextSnap: Initialized for PDF viewer');
+  } else {
+    console.log('ContextSnap: Initialized for regular webpage');
+  }
+}
+
+// Initialize extension when page loads
+document.addEventListener('DOMContentLoaded', initializeContextSnap);
 
 // Also initialize if DOMContentLoaded already fired
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', function() {
-    injectSidebarStyles();
-    injectCloseButton();
-    injectShowButton();
-    injectContextMenu();
-    loadSidebar();
-  });
+  document.addEventListener('DOMContentLoaded', initializeContextSnap);
 } else {
-  injectSidebarStyles();
-  injectCloseButton();
-  injectShowButton();
-  injectContextMenu();
-  loadSidebar();
+  initializeContextSnap();
 }
 
-// Handle text selection based on mode
-document.addEventListener('mouseup', async function () {
-  const selectedText = window.getSelection().toString().trim();
-
-  if (selectedText.length >= 3) {
-    if (isHyperSearchMode) {
-      // Hyper Search mode: immediately show sidebar and analyze
-      console.log('Hyper Search mode: analyzing text:', selectedText);
-      showSidebar();
-      const iframe = document.getElementById('contextsnap-sidebar');
-      if (iframe) {
-        iframe.contentWindow.postMessage({ text: selectedText }, '*');
-      }
+// Special handling for PDF viewers that load dynamically
+if (window.location.href.includes('.pdf')) {
+  // For PDF files, also try to initialize after a delay
+  setTimeout(() => {
+    if (!document.getElementById('contextsnap-sidebar')) {
+      console.log('ContextSnap: Late initialization for PDF');
+      initializeContextSnap();
     }
-    // In deactive mode, do nothing - wait for right-click
-  }
-});
+  }, 2000);
+}
 
-// Handle right-click context menu
-document.addEventListener('contextmenu', function(event) {
-  const selectedText = window.getSelection().toString().trim();
+// Check if we're in a PDF viewer
+function isPDFViewer() {
+  return window.location.href.includes('.pdf') || 
+         document.querySelector('embed[type="application/pdf"]') ||
+         document.querySelector('object[type="application/pdf"]') ||
+         window.location.href.includes('chrome-extension://mhjfbmdgcfjbbpaeojofohoefgiehjai') || // Chrome PDF viewer
+         document.title.includes('.pdf') ||
+         document.querySelector('#viewer') && document.querySelector('.page'); // Generic PDF viewer
+}
+
+// Get selected text from various sources (regular DOM and PDF)
+function getSelectedText() {
+  // Try regular window selection first
+  let selectedText = window.getSelection().toString().trim();
   
-  if (selectedText.length >= 3 && !isHyperSearchMode) {
-    // Show custom context menu
-    event.preventDefault();
-    showContextMenu(event.clientX, event.clientY, selectedText);
+  if (!selectedText && isPDFViewer()) {
+    // For PDF viewers, try different methods
+    try {
+      // Method 1: Check for PDF.js viewer
+      if (window.PDFViewerApplication && window.PDFViewerApplication.pdfViewer) {
+        const selection = window.PDFViewerApplication.pdfViewer.getTextSelection();
+        if (selection && selection.str) {
+          selectedText = selection.str.trim();
+        }
+      }
+      
+      // Method 2: Try to get selection from PDF viewer iframe or embed
+      const pdfEmbed = document.querySelector('embed[type="application/pdf"]');
+      if (pdfEmbed) {
+        try {
+          const pdfSelection = pdfEmbed.contentWindow.getSelection();
+          if (pdfSelection) {
+            selectedText = pdfSelection.toString().trim();
+          }
+        } catch (e) {
+          // Cross-origin restrictions may prevent access
+        }
+      }
+      
+      // Method 3: Check for text layers in PDF.js
+      const textLayers = document.querySelectorAll('.textLayer');
+      if (textLayers.length > 0) {
+        // Get selection from text layers
+        const selection = window.getSelection();
+        if (selection.rangeCount > 0) {
+          const range = selection.getRangeAt(0);
+          const container = range.commonAncestorContainer;
+          if (container && container.textContent) {
+            selectedText = range.toString().trim();
+          }
+        }
+      }
+      
+    } catch (error) {
+      console.log('ContextSnap: PDF text selection error:', error);
+    }
   }
-});
+  
+  return selectedText;
+}
 
-// Hide context menu when clicking elsewhere
-document.addEventListener('click', function(event) {
-  if (!event.target.closest('#contextsnap-context-menu')) {
-    hideContextMenu();
-  }
-});
+// Enhanced text selection handler
+function handleTextSelection(event) {
+  // Add a small delay to ensure selection is complete
+  setTimeout(() => {
+    const selectedText = getSelectedText();
+    
+    if (selectedText && selectedText.length >= 3) {
+      console.log('ContextSnap: Selected text:', selectedText);
+      
+      if (isHyperSearchMode) {
+        // Hyper Search mode: immediately show sidebar and analyze
+        console.log('Hyper Search mode: analyzing text:', selectedText);
+        showSidebar();
+        const iframe = document.getElementById('contextsnap-sidebar');
+        if (iframe) {
+          iframe.contentWindow.postMessage({ text: selectedText }, '*');
+        }
+      }
+      // In manual mode, do nothing - wait for right-click
+    }
+  }, 100);
+}
+
+// Handle text selection for both regular pages and PDFs
+document.addEventListener('mouseup', handleTextSelection);
+
+// For PDFs, also listen on document body and common PDF viewer elements
+if (isPDFViewer()) {
+  console.log('ContextSnap: PDF viewer detected, adding enhanced selection handlers');
+  
+  // Additional listeners for PDF viewers
+  document.body.addEventListener('mouseup', handleTextSelection);
+  
+  // Listen for PDF.js specific events
+  document.addEventListener('textlayerrendered', function() {
+    const textLayers = document.querySelectorAll('.textLayer');
+    textLayers.forEach(layer => {
+      layer.addEventListener('mouseup', handleTextSelection);
+    });
+  });
+  
+  // Monitor for dynamically loaded PDF pages
+  const observer = new MutationObserver(function(mutations) {
+    mutations.forEach(function(mutation) {
+      if (mutation.addedNodes) {
+        mutation.addedNodes.forEach(function(node) {
+          if (node.nodeType === 1) { // Element node
+            // Check for new text layers
+            const textLayers = node.querySelectorAll ? node.querySelectorAll('.textLayer') : [];
+            textLayers.forEach(layer => {
+              layer.addEventListener('mouseup', handleTextSelection);
+            });
+            
+            // Check if the added node is itself a text layer
+            if (node.classList && node.classList.contains('textLayer')) {
+              node.addEventListener('mouseup', handleTextSelection);
+            }
+          }
+        });
+      }
+    });
+  });
+  
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true
+  });
+}
+
+// Note: Context menu is now handled by background.js using Chrome's built-in context menu API
+// The "Analyze with ContextSnap" option will appear when text is selected
 
 // --- Overlay logic for the sidebar iframe ---
 let isSidebarOverlay = false;
@@ -438,3 +511,8 @@ function toggleSidebarOverlay() {
     window.onmouseup = null;
   }
 }
+
+// Initialize the extension
+console.log('ContextSnap: Content script loaded on', window.location.href);
+injectSidebarStyles();
+console.log('ContextSnap: Styles injected, ready for messages');

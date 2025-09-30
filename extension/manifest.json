@@ -3,7 +3,10 @@
   "name": "ContextSnap",
   "version": "1.0",
   "description": "Highlight text to get contextual AI explanations.",
-  "permissions": ["scripting", "activeTab", "storage", "clipboardWrite"],
+  "permissions": ["scripting", "activeTab", "tabs", "storage", "clipboardWrite", "contextMenus"],
+  "background": {
+    "service_worker": "background.js"
+  },
   "action": {
     "default_title": "ContextSnap"
   },
