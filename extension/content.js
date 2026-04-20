@@ -8,6 +8,9 @@ function injectSidebarStyles() {
       position: fixed !important;
       top: 0 !important;
       right: 0 !important;
+      left: auto !important;
+      bottom: auto !important;
+      margin: 0 !important;
       width: 400px !important;
       height: 100vh !important;
       border: none !important;
@@ -75,6 +78,18 @@ function injectSidebarStyles() {
   document.head.appendChild(style);
 }
 
+function getContextSnapRoot() {
+  let root = document.getElementById('contextsnap-root');
+  if (!root) {
+    root = document.createElement('div');
+    root.id = 'contextsnap-root';
+    root.style.position = 'relative';
+    root.style.zIndex = '2147483647';
+    document.documentElement.appendChild(root);
+  }
+  return root;
+}
+
 let isHyperSearchMode = false; // Default to deactive mode
 
 function showSidebar() {
@@ -122,7 +137,7 @@ function injectCloseButton() {
   btn.id = 'contextsnap-sidebar-close-btn';
   btn.innerText = '✖';
   btn.onclick = hideSidebar;
-  document.body.appendChild(btn);
+  getContextSnapRoot().appendChild(btn);
   btn.style.display = 'none';
 }
 
@@ -133,7 +148,7 @@ function injectShowButton() {
   btn.innerText = '⮞';
   btn.onclick = showSidebar;
   btn.style.display = 'flex';
-  document.body.appendChild(btn);
+  getContextSnapRoot().appendChild(btn);
 }
 
 // Handle messages from background script
@@ -168,7 +183,7 @@ function loadSidebar() {
     iframe.src = chrome.runtime.getURL('sidebar.html');
     iframe.id = 'contextsnap-sidebar';
     iframe.className = 'collapsed';
-    document.body.appendChild(iframe);
+    getContextSnapRoot().appendChild(iframe);
     
     // Listen for mode changes from sidebar
     iframe.addEventListener('load', function() {
@@ -193,6 +208,7 @@ function loadSidebar() {
 
 // Initialize extension
 function initializeContextSnap() {
+  getContextSnapRoot();
   injectSidebarStyles();
   injectCloseButton();
   injectShowButton();
